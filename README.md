@@ -1,2 +1,2 @@
 # GMF_WinSh
-A simple windows command processor for learning.
+A simple command processor for Windows.
