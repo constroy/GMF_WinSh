@@ -80,12 +80,133 @@ main()
 
 		/************************************解析指令********************************************/
 		
-		// TODO: 对输入命令进行解析，并存储到字符串数组中
+		for (i = 0, j = 0, k = 0; i < input_len; i++){
+			if (input[i] == ' ' || input[i] == '\0'){
+				if (j == 0)
+					continue;
+				else
+				{
+					buf[j++] = '\0';
+					arg[k] = (char*)malloc(sizeof(char)*j);
+					strcpy(arg[k++], buf);
+					j = 0;
+				}
+			}
+			else
+			{
+				buf[j++] = input[i];
+			}
+		}
 		
 
 		/*********************************内部命令处理******************************************/
+		/*cd命令*/
+		if (strcmp(arg[0], "cd") == 0){
+			add_history(input);
+			for (i = 3, j = 0; i <= input_len; i++)
+				buf[j++] = input[i];
+			buf[j] = '\0';
+			arg[1] = (char*)malloc(sizeof(char)*j);
+			strcpy(arg[1], buf);
+			cd_cmd(arg[1]);
+			free(input);
+			continue;
+		}
+		
+		/*dir命令*/
+		if (strcmp(arg[0], "dir") == 0){
+			char *route;
+			add_history(input);
+			if (arg[1] == NULL){
+				route = path;
+				dir_cmd(route);
+			}
+			else
+				dir_cmd(arg[1]);
+			free(input);
+			continue;
+		}
 
-		// TODO: 根据解析结果，进入相应的命令处理函数
+		/*tasklist命令*/
+		if (strcmp(arg[0], "tasklist") == 0){
+			add_history(input);
+			GetProcessList();
+			free(input);
+			continue;
+		}
+
+
+		/*前台进程*/
+		if (strcmp(arg[0], "fp") == 0){
+			add_history(input);
+			if (arg[1]==NULL)
+			{
+				printf("没有指定可执行文件\n");
+				free(input);
+				continue;
+			}
+			is_bg = 0;
+			hprocess = process(is_bg,arg[1]);
+			if (WaitForSingleObject(hprocess,INFINITE)==WAIT_OBJECT_0)
+			/*如果进程执行完毕，释放控制台*/
+			free(input);
+			continue;
+		}
+
+		/*后台进程*/
+		if (strcmp(arg[0], "bg&") == 0){
+			add_history(input);
+			if (arg[1] == NULL)
+			{
+				printf("没有指定可执行文件\n");
+				free(input);
+				continue;
+			}
+			is_bg = 1;
+			process(is_bg,arg[1]);
+			free(input);
+			continue;
+		}
+
+		/*kill命令*/
+		if (strcmp(arg[0], "taskkill") == 0){
+			BOOL success;
+			add_history(input);
+			success = killProcess(arg[1]);
+			if (!success)
+				printf("kill process failed!\n");
+			free(input);
+			continue;
+		}
+
+		/*显示历史命令*/
+		if (strcmp(arg[0], "history") == 0){
+			add_history(input);
+			history_cmd();
+			free(input);
+			continue;
+		}
+
+		/*exit命令*/
+		if (strcmp(arg[0], "exit") == 0){
+			add_history(input);
+			printf("Bye bye/n");
+			free(input);
+			break;
+		}
+
+		/*help命令*/
+		if (strcmp(arg[0], "help") == 0){
+			add_history(input);
+			help();
+			free(input);
+			continue;
+		}
+		else
+		{
+			printf("please type in correct command!\n");
+			continue;
+		}
 	}	
 }
 
