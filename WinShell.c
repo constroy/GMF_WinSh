@@ -16,7 +16,9 @@
 main()
 {
 	/******************************声明程序中用到的函数**************************************/
-
+	BOOL CALLBACK lpEnumFunc(HWND hwnd, LPARAM lParam);
+	HWND ReturnWnd(DWORD processID);
+	BOOL fp(char *pid);
 	void cd_cmd(char *dir);                     /*显示cd命令*/
 	void dir_cmd(char *dir);                    /*显示dir命令*/
 	void ftime(FILETIME filetime);              /*显示文件创建时间*/
@@ -165,6 +167,20 @@ main()
 			}
 			is_bg = 1;
 			process(is_bg,arg[1]);
+			free(input);
+			continue;
+		}
+
+				/*后台换前台命令*/
+		if (strcmp(arg[0], "fp&") == 0){
+			BOOL success;
+			int id;
+			add_history(input);
+			success = fp(arg[1]);
+			id = atoi(arg[1]);
+			hprocess =  OpenProcess(PROCESS_TERMINATE, FALSE, id);
+			if (WaitForSingleObject(hprocess,INFINITE)==WAIT_OBJECT_0)
+			/*如果进程执行完毕，释放控制台*/
 			free(input);
 			continue;
 		}
@@ -512,6 +528,26 @@ HANDLE process(int bg, char appName[])
 }
 
 
+/***********************************后台换前台进程命令*******************************************/
+
+BOOL fp(char *pid)
+{
+	int id;
+	HWND WND;
+	id = atoi(pid);
+	
+	WND = ReturnWnd(id);
+	if(WND==NULL)
+		return FALSE;
+	ShowWindow(WND, SW_SHOWNORMAL );
+	 UpdateWindow(WND);
+	if(SetForegroundWindow(WND))
+		return TRUE;
+	else
+		return FALSE;
+	
+}
+
 /***********************************kill进程命令*******************************************/
 
 BOOL killProcess(char *pid)
@@ -549,7 +585,32 @@ BOOL WINAPI ConsoleHandler(DWORD CEvent)
 	}
 	return TRUE;
 }
+/*************************************查询PID的窗口******************************************/
+BOOL CALLBACK lpEnumFunc(HWND hwnd, LPARAM lParam)  
+{  
+      
+    EnumFunArg  *pArg = (LPEnumFunArg)lParam;     
+    DWORD  processId;  
+    GetWindowThreadProcessId(hwnd, &processId);      
+    if( processId == pArg->dwProcessId)    
+    {     
+        pArg->hWnd = hwnd;  
+        return TRUE;      
+    }  
+    return FALSE;     
+}
 
+HWND ReturnWnd(DWORD processID)  
+{  
+   HWND retWnd=NULL;    
+   EnumFunArg wi;    
+    wi.dwProcessId   =processID;    
+    wi.hWnd   =  NULL;    
+    EnumWindows(lpEnumFunc,(LPARAM)&wi);  
+   if(wi.hWnd){
+	   retWnd=wi.hWnd;  
+   }   return retWnd;  
+}  
 
 /***********************************显示帮助*******************************************/
 

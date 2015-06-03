@@ -19,3 +19,10 @@ typedef struct files_Content
 	int size;
 	struct files_Content *next;
 }files_Content;
+
+/*´°¿ÚÐÅÏ¢*/
+typedef struct EnumFunArg  
+{     
+    HWND      hWnd;  
+    DWORD    dwProcessId;     
+}EnumFunArg,*LPEnumFunArg;  
