@@ -64,6 +64,7 @@ main()
 		/*将无用字符过滤掉*/
 		while((c = getchar()) ==  ' ' || c == '\t' || c == EOF)
 			;	
+
 		if(c == '\n')                   /*输入为空时结束本次循环打印提示符*/
 			continue;
 		while(c != '\n')
