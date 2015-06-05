@@ -31,6 +31,7 @@ main()
 	void help();                                /*显示帮助信息*/
 
 	char c, *input, *arg[2], path[BUFSIZE];
+	char str[256];
 	int input_len = 0, is_bg = 0, i, j, k;
 	HANDLE hprocess;              /*进程执行结束，返回进程句柄*/
 	DWORD dwRet;
@@ -150,8 +151,28 @@ main()
 			}
 			is_bg = 0;
 			hprocess = process(is_bg,arg[1]);
-			if (WaitForSingleObject(hprocess,INFINITE)==WAIT_OBJECT_0)
+		//	
 			/*如果进程执行完毕，释放控制台*/
+
+			while(1){
+				scanf("%s",str);
+				if(strcmp(str,"Back")==0)
+				{	
+					if(SetConsoleCtrlHandler((PHANDLER_ROUTINE)ConsoleHandler,FALSE) == FALSE)
+					{
+							printf("Unable to uninstall handler!\n");
+							return 1;
+					}
+				c=getchar();
+					break;
+					
+				}
+				if (WaitForSingleObject(hprocess,500)==WAIT_OBJECT_0)
+				{	
+					c=getchar();
+					break;
+				}
+			}
 			free(input);
 			continue;
 		}
@@ -175,8 +196,29 @@ main()
 		if (strcmp(arg[0], "fp&") == 0){
 			add_history(input);
 			hprocess = fp(arg[1]);
-			if (WaitForSingleObject(hprocess,INFINITE)==WAIT_OBJECT_0)
-			/*如果进程执行完毕，释放控制台*/
+			if(hprocess==NULL){
+			free(input);
+			continue;
+			}
+		while(1){
+				scanf("%s",str);
+				if(strcmp(str,"Back")==0)
+				{	
+					if(SetConsoleCtrlHandler((PHANDLER_ROUTINE)ConsoleHandler,FALSE) == FALSE)
+					{
+							printf("Unable to uninstall handler!\n");
+							return 1;
+					}
+				c=getchar();
+					break;
+					
+				}
+				if (WaitForSingleObject(hprocess,500)==WAIT_OBJECT_0)
+				{	
+					c=getchar();
+					break;
+				}
+			}
 			free(input);
 			continue;
 		}
@@ -220,7 +262,8 @@ main()
 			printf("please type in correct command!\n");
 			continue;
 		}
-	}	
+	}
+	return 1;
 }
 
 /**********************************主程序完*******************************************/
@@ -537,7 +580,7 @@ HANDLE fp(char *pid)
 			printf("Unable to install handler!\n");
 				return NULL;
 	} 
-		hp =  OpenProcess(SYNCHRONIZE, FALSE, id);
+		hp =  OpenProcess(PROCESS_ALL_ACCESS, FALSE, id);
 		return hp;
 	
 }
@@ -567,7 +610,7 @@ BOOL WINAPI ConsoleHandler(DWORD CEvent)
 		
 	case CTRL_C_EVENT:                        /*由系统处理事件，包括ctrl+c等*/		
 		break;
-	case CTRL_BREAK_EVENT:		
+	case CTRL_BREAK_EVENT:
 		break;
 	case CTRL_CLOSE_EVENT:		
 		break;
