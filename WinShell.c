@@ -26,6 +26,7 @@ main()
 	void history_cmd();                         /*获得最近输入的命令*/
 	void add_history(char *inputcmd);           /*将输入的命令添加到命令历史中*/
 	HANDLE process(int bg, char appName[]);                     /*创建进程*/
+	HANDLE processSi(char appName[], STARTUPINFO si);
     BOOL killProcess(char *pid);                /*kill进程*/
     BOOL WINAPI ConsoleHandler(DWORD CEvent);   /*回调函数*/
 	void help();                                /*显示帮助信息*/
@@ -35,7 +36,25 @@ main()
 	int input_len = 0, is_bg = 0, i, j, k;
 	HANDLE hprocess;              /*进程执行结束，返回进程句柄*/
 	DWORD dwRet;
+	BOOL pipeIn= FALSE, pipeOut = FALSE;
+	HANDLE hTempOut;
+	HANDLE hTempIn;
+	int bRet;
+	HANDLE hRead;
+    HANDLE hWrite;
+    STARTUPINFO si;
+	SECURITY_ATTRIBUTES sa;
+    sa.bInheritHandle        = TRUE;    //必须为TRUE，父进程的读写句柄可以被子进程继承
+    sa.lpSecurityDescriptor = NULL;
+    sa.nLength            = sizeof(SECURITY_ATTRIBUTES);
 
+	//创建匿名管道
+    bRet = CreatePipe( &hRead, &hWrite, &sa, 0);
+    if ( !bRet )
+    {
+        printf( "创建匿名管道失败！错误码:[%d]\n", GetLastError() );
+        return -1;
+    }
 	while(1)
 	{    
 		/*将指向输入命令的指针数组初始化*/
@@ -72,6 +91,11 @@ main()
 			continue;
 		while(c != '\n')
 		{
+			if(c == '|')
+			{
+				pipeOut = TRUE;
+				break;
+			}
 			buf[input_len++] = c;
 			c = getchar();
 		}
@@ -80,7 +104,6 @@ main()
 		/*分配动态存储空间，将命令从缓存复制到input中*/
 		input = (char*) malloc(sizeof(char)*(input_len));
 		strcpy(input, buf);
-		
 
 		/************************************解析指令********************************************/
 		
@@ -101,8 +124,10 @@ main()
 				buf[j++] = input[i];
 			}
 		}
-		
-
+		if (pipeOut)
+		{
+			hTempOut = GetStdHandle( STD_OUTPUT_HANDLE );
+		}
 		/*********************************内部命令处理******************************************/
 		/*cd命令*/
 		if (strcmp(arg[0], "cd") == 0){
@@ -259,9 +284,71 @@ main()
 		}
 		else
 		{
-			printf("please type in correct command!\n");
-			continue;
+			si.dwFlags        = STARTF_USESTDHANDLES;
+			//获取STARTUPINFO结构体信息
+			GetStartupInfo(&si);
+			if (pipeOut)
+			{
+				//获取本进程标准输出
+				//GetStdHandle返回INVALID_HANDLE_VALUE表示失败
+				hTempOut = GetStdHandle( STD_OUTPUT_HANDLE );
+				if ( INVALID_HANDLE_VALUE == hTempOut )
+				{
+					printf( "获取本进程标准输出句柄失败！错误码:[%d]\n", GetLastError() );
+					return -1;
+				}
+
+				//设置标准输出到管道
+				//SetStdHandle设置标准输出到指定设备，返回值非0表示成功，返回0失败
+				if ( !SetStdHandle( STD_OUTPUT_HANDLE, hWrite) )
+				{
+					printf( "设置标准输出到管道失败！错误码:[%d]\n", GetLastError() );
+					return    -1;
+				}
+				//设置STARTUPINFO的标准输出到管道入口，要使标准输入输出有效，必须指定STARTF_USESTDHANDLES
+				
+				si.hStdOutput    = hWrite;
+				si.hStdError    = hWrite;
+			}
+			if (pipeIn)
+			{
+				//获取本进程标准输出
+				//GetStdHandle返回INVALID_HANDLE_VALUE表示失败
+				hTempIn = GetStdHandle( STD_INPUT_HANDLE );
+				if ( INVALID_HANDLE_VALUE == hTempIn )
+				{
+					printf( "获取本进程标准输入句柄失败！错误码:[%d]\n", GetLastError() );
+					return -1;
+				}
+
+				//设置标准输出到管道
+				//SetStdHandle设置标准输出到指定设备，返回值非0表示成功，返回0失败
+				if ( !SetStdHandle( STD_INPUT_HANDLE, hRead) )
+				{
+					printf( "设置标准输入到管道失败！错误码:[%d]\n", GetLastError() );
+					return    -1;
+				}
+				//设置STARTUPINFO的标准输出到管道入口，要使标准输入输出有效，必须指定STARTF_USESTDHANDLES
+				si.hStdInput    = hRead;
+			}
+		
+			
+			processSi(arg[0],si);
+			Sleep(50);
+			if (pipeOut)
+			{
+				SetStdHandle( STD_OUTPUT_HANDLE, hTempOut);
+				CloseHandle(hWrite);
+			}
+			if (pipeIn)
+			{
+				SetStdHandle( STD_INPUT_HANDLE, hTempIn);
+				CloseHandle(hRead);
+			}
 		}
+		
+		pipeIn = pipeOut;
+		pipeOut = FALSE;
 	}
 	return 1;
 }
@@ -529,6 +616,25 @@ void history_cmd()
 
 /***********************************创建进程命令*******************************************/
 
+HANDLE processSi(char appName[], STARTUPINFO si)
+{
+	PROCESS_INFORMATION   pi; 
+	/*用于版本控制*/
+	si.cb = sizeof(si);
+	GetStartupInfo(&si);
+	/*擦去pi的内容*/
+	ZeroMemory(&pi, sizeof(pi));
+ 	
+	/*设置钩子，捕捉ctrl+c命令，收到即结束进程*/		
+	if(SetConsoleCtrlHandler((PHANDLER_ROUTINE)ConsoleHandler,TRUE) == FALSE)
+	{
+		printf("Unable to install handler!\n");
+		return NULL;
+	} 
+	/*调用进程相关程序，此处调用一个自己编写的程序,最好有控制台输出，注意路径正确*/
+	CreateProcess(NULL, appName, NULL, NULL, TRUE, NULL, NULL, NULL, &si, &pi);
+	return pi.hProcess;
+}
 HANDLE process(int bg, char appName[])
 {
 
