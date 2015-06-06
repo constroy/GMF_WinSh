@@ -765,8 +765,14 @@ BOOL WINAPI ConsoleHandler(DWORD CEvent)
 
 void help()
 {
-// TODO: 添加必要的注意帮助信息
-
-
+	printf("cd:切换当前目录。\n输入形式：cd ..\n\t cd [dirve:][path]\n注：cd指令以空格为分隔符区分命令和参数\n\n");
+	printf("dir:显示当前目录中的文件和子文件列表。\n输入形式：dir \n\t dir [dirve:][path]\n注：dir指令以空格为分隔符区分命令和参数\n\n");
+	printf("tasklist:显示系统中当前的进程信息。\n输入形式：tasklist\n\n");
+	printf("fp:创建进程并在前台执行。\n输入形式：fp\n\n");
+	printf("bg&:创建进程并在后台执行。\n输入形式：bg&\n\n");
+	printf("fp&:后台进程前台执行。\n输入形式：fp [pid]\n\n");
+	printf("taskkill:终止进程。\n输入形式：taskkill [pid]\n\n");
+	printf("history:显示命令。\n输入形式：history\n\n");
+	printf("exit:退出。\n输入形式：exit\n\n");
 }
 
