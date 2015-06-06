@@ -1,6 +1,7 @@
 #define _WIN32_WINNT 0x0501         /*Windows API版本*/
 
 #include <stdio.h>
+#include <ctype.h>
 #include <stdlib.h>
 #include <windows.h>
 #include <winbase.h>
@@ -20,7 +21,7 @@ main()
 	HWND ReturnWnd(DWORD processID);
 	HANDLE fp(char *pid);
 	void cd_cmd(char *dir);                     /*显示cd命令*/
-	void dir_cmd(char *dir);                    /*显示dir命令*/
+	void dir_cmd(char *dir,char *dir_type);                    /*显示dir命令*/
 	void ftime(FILETIME filetime);              /*显示文件创建时间*/
 	void GetProcessList();                      /*获得系统当前进程列表*/
 	void history_cmd();                         /*获得最近输入的命令*/
@@ -148,11 +149,20 @@ main()
 			add_history(input);
 			if (arg[1] == NULL){
 				route = path;
-				dir_cmd(route);
+				dir_cmd(route,NULL);
 			}
-			else
-				dir_cmd(arg[1]);
-			free(input);
+			else if(strcmp(arg[1],"/D")==0||strcmp(arg[1],"/L")==0){
+				route = path;
+				dir_cmd(route,arg[1]);
+			}
+			else{
+				if(arg[2]==NULL)
+					dir_cmd(arg[1],NULL);
+				else if(strcmp(arg[2],"/D")==0||strcmp(arg[2],"/L")==0)
+					dir_cmd(route,arg[2]);
+			}
+				
+				free(input);
 			continue;
 		}
 
@@ -373,9 +383,9 @@ void cd_cmd(char *route)
 
 /************************************dir命令*********************************************/
 
-void dir_cmd(char *route)
+void dir_cmd(char *route,char *dir_type)
 {
-	
+		char filename[256]={0};
 	WIN32_FIND_DATA FindFileData;                /*将查找到的文件或目录以WIN32_FIND_DATA结构返回*/
 	files_Content head, *p, *q;	                 /*定义指向文件结构体的指针*/
 	HANDLE hFind = INVALID_HANDLE_VALUE;
@@ -386,7 +396,15 @@ void dir_cmd(char *route)
 	_int64 l_user, l_sum, l_idle;                 /*已用空间，总容量，可用空间*/
 	unsigned long volume_number;
 	char *DirSpec[3];
-	
+	int i;
+	int FLAG_D=0;
+	int FLAG_L=0;
+	if(dir_type!=NULL){
+		if(strcmp(dir_type,"/D")==0)
+			FLAG_D=1;
+		if(strcmp(dir_type,"/L")==0)
+			FLAG_L=1;
+	}
 	DirSpec[0] = (char*)malloc(sizeof(char) * 2);	
 	strncpy(DirSpec[0], route, 1);	
 	*(DirSpec[0] + 1) = '\0';                      /*DirSpec[0]为驱动器名*/
@@ -462,16 +480,31 @@ void dir_cmd(char *route)
 		/*将结构体中数据的创建时间、类型、大小、名称等信息依次输出*/
 		while(p != NULL)
 		{
+			if(p->type==1&&FLAG_D)
+			{
+				p=p->next;
+				continue;
+			}
 			ftime(p->time);
 			if(p->type == 0)
 				printf("\t<DIR>\t\t");
 			else
 				printf("\t\t%9lu", p->size);
+			if(FLAG_L){
+				strcpy(filename,p->name);
+				for(i=0;i<strlen(filename);i++)
+				{
+					filename[i]=tolower(filename[i]);		
+				}
+				printf ("\t%s\n", filename);	
+			}
+			else
 			printf ("\t%s\n", p->name);		
 			p = p->next;
 		}
 		free(p);
 		/*显示文件和目录总数，磁盘空间相关信息*/
+		if(!FLAG_D)
 		printf("%15d 个文件\t\t\t%I64d 字节 \n", file, sum_file);
 		GetDiskFreeSpaceEx(DirSpec[1], (PULARGE_INTEGER)&l_user, (PULARGE_INTEGER)&l_sum, (PULARGE_INTEGER)&l_idle);	
 		printf("%15d 个目录\t\t\t%I64d 可用字节 \n", dir, l_idle);
@@ -733,5 +766,7 @@ BOOL WINAPI ConsoleHandler(DWORD CEvent)
 void help()
 {
 // TODO: 添加必要的注意帮助信息
+
+
 }
 
