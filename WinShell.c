@@ -294,6 +294,7 @@ main()
 		}
 		else
 		{
+			add_history(input);
 			si.dwFlags        = STARTF_USESTDHANDLES;
 			//获取STARTUPINFO结构体信息
 			GetStartupInfo(&si);
@@ -343,8 +344,10 @@ main()
 			}
 		
 			
-			processSi(arg[0],si);
-			Sleep(50);
+			hprocess=processSi(arg[0],si);
+			if (WaitForSingleObject(hprocess,INFINITE)==WAIT_OBJECT_0)
+					;
+
 			if (pipeOut)
 			{
 				SetStdHandle( STD_OUTPUT_HANDLE, hTempOut);
@@ -359,6 +362,8 @@ main()
 		
 		pipeIn = pipeOut;
 		pipeOut = FALSE;
+		free(input);
+			continue;
 	}
 	return 1;
 }
